@@ -6,6 +6,9 @@ import PackageDescription
 let package = Package(
     name: "ToolsRunner",
     platforms: [.macOS(.v12)],
+    products: [
+        .executable(name: "tools", targets: ["ToolsRunner"])
+    ],
     targets: [
         .executableTarget(
             name: "ToolsRunner"
