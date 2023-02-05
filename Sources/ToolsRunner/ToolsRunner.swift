@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 struct EnvironmentConfig {
@@ -8,7 +9,18 @@ struct EnvironmentConfig {
 
 @main
 struct ToolsRunner {
-    static func main() async throws {
+    static func main() async {
+        do {
+            let configURL = try findEnvironmentConfigURL()
+            let config = try readEnvironmentConfig(configURL)
+            try await run(with: config, environmentConfigDirectory: configURL.deletingLastPathComponent())
+        } catch {
+            print("\(error)", to: &standardError)
+            exit(42)
+        }
+    }
+
+    static func findEnvironmentConfigURL() throws -> URL {
         var configSearchDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 
         while true {
@@ -19,10 +31,7 @@ struct ToolsRunner {
             if FileManager.default.fileExists(atPath: configURL.path, isDirectory: &isDirectory),
                !isDirectory.boolValue
             {
-                let config = try readEnvironmentConfig(configURL)
-
-                try await run(with: config, environmentConfigDirectory: configSearchDirectory)
-                return
+                return configURL
             }
 
             configSearchDirectory = configSearchDirectory.deletingLastPathComponent()
@@ -93,7 +102,7 @@ struct ToolsRunner {
         return EnvironmentConfig(executable: executable, url: url, checksum: checksum)
     }
 
-    static func run(with config: EnvironmentConfig, environmentConfigDirectory: URL) async throws {
+    static func run(with config: EnvironmentConfig, environmentConfigDirectory: URL) async throws -> Never {
         let cacheInfoProvider = CacheInfoProvider()
 
         if let cacheInfo = try cacheInfoProvider.cacheInfo(for: environmentConfigDirectory),
@@ -153,6 +162,15 @@ struct ToolsRunner {
         } else {
             let (data, _) = try await URLSession.shared.data(from: url)
             let tempFileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+
+            let actualHash = Insecure.SHA1.hash(data: data)
+            let actualHashString = actualHash.description.split(separator: ":").last?
+                .trimmingCharacters(in: .whitespaces)
+
+            guard checksum == actualHashString else {
+                throw ChecksumError(actualChecksum: actualHashString ?? "")
+            }
+
             try data.write(to: tempFileURL)
 
             defer {
@@ -235,5 +253,13 @@ struct FileDoesNotExistError: Error, CustomStringConvertible {
 
     var description: String {
         "File \(name) doesn't exist."
+    }
+}
+
+struct ChecksumError: Error, CustomStringConvertible {
+    let actualChecksum: String
+
+    var description: String {
+        "Checksums don't match. Actual checksum is \(actualChecksum)"
     }
 }
