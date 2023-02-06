@@ -136,7 +136,7 @@ struct ToolsRunner {
         process.arguments = Array(ProcessInfo.processInfo.arguments.dropFirst())
 
         var environment = ProcessInfo.processInfo.environment
-        environment["TOOLS_EVN_DIR"] = envConfigDirectory.path
+        environment["TOOLS_ENV_DIR"] = envConfigDirectory.path
         process.environment = environment
 
         let pipe = Pipe()
