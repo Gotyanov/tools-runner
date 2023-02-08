@@ -116,7 +116,7 @@ struct ToolsRunner {
             try await fetchAndUnzip(config.url, checksum: config.checksum, destination: cacheDirectoryURL)
 
             try cacheInfoProvider.saveCacheInfo(
-                CacheInfo(directory: cacheDirectoryName, lastUsageDate: Date()),
+                CacheInfo(directory: cacheDirectoryName, lastUsageDate: Date(), checksum: config.checksum),
                 for: environmentConfigDirectory
             )
 
